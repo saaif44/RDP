@@ -118,25 +118,25 @@ jobs:
         cp LocalRDP-Admin-Bin "LocalRDP-Admin.app/Contents/MacOS/LocalRDP-Admin"
         chmod +x "LocalRDP-Admin.app/Contents/MacOS/LocalRDP-Admin"
         cat <<EOF > "LocalRDP-Admin.app/Contents/Info.plist"
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>LocalRDP-Admin</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.localrdp.admin</string>
-    <key>CFBundleName</key>
-    <string>LocalRDP Admin</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.2.0</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>10.13</string>
-</dict>
-</plist>
-EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>LocalRDP-Admin</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.localrdp.admin</string>
+            <key>CFBundleName</key>
+            <string>LocalRDP Admin</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.2.0</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.13</string>
+        </dict>
+        </plist>
+        EOF
         hdiutil create -volname "LocalRDP-Admin" -srcfolder "LocalRDP-Admin.app" -ov -format UDZO final-release/LocalRDP-Admin-Universal.dmg
 
         # 2. Create Universal Client (Agent) DMG
@@ -145,25 +145,25 @@ EOF
         cp LocalRDP-Client-Bin "LocalRDP-Client.app/Contents/MacOS/LocalRDP-Client"
         chmod +x "LocalRDP-Client.app/Contents/MacOS/LocalRDP-Client"
         cat <<EOF > "LocalRDP-Client.app/Contents/Info.plist"
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>LocalRDP-Client</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.localrdp.client</string>
-    <key>CFBundleName</key>
-    <string>LocalRDP Client</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.2.0</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>10.13</string>
-</dict>
-</plist>
-EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>LocalRDP-Client</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.localrdp.client</string>
+            <key>CFBundleName</key>
+            <string>LocalRDP Client</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.2.0</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.13</string>
+        </dict>
+        </plist>
+        EOF
         hdiutil create -volname "LocalRDP-Client" -srcfolder "LocalRDP-Client.app" -ov -format UDZO final-release/LocalRDP-Client-Universal.dmg
 
     - name: Create Release
