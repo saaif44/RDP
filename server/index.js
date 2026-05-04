@@ -62,8 +62,8 @@ udpClient.on('listening', () => {
   console.log(`UDP Discovery listening on port ${address.port}`);
 });
 
-// Bind to port 4001 to listen for broadcasts
-udpClient.bind(4001);
+// Bind to port 7421 to listen for broadcasts
+udpClient.bind(7421);
 
 // Clean up stale agents (if they haven't broadcasted in 10 seconds)
 setInterval(() => {
@@ -93,7 +93,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 7420;
 server.listen(PORT, () => {
   console.log(`Mother System Backend running on port ${PORT}`);
 });

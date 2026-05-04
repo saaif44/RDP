@@ -39,8 +39,8 @@ app = socketio.WSGIApp(sio)
 
 PC_NAME = platform.node()
 OS_NAME = platform.system()
-AGENT_PORT = 4000
-BROADCAST_PORT = 4001
+AGENT_PORT = 7420
+BROADCAST_PORT = 7421
 
 active_connections = 0
 

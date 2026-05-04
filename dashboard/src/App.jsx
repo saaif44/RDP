@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { Monitor, Laptop, Server, X, MousePointer2, FolderOpen, File, Download, Folder, ArrowLeft } from 'lucide-react';
 import './index.css';
 
-const LOCAL_SERVER_URL = 'http://localhost:4000'; 
+const LOCAL_SERVER_URL = 'http://localhost:7420'; 
 
 function App() {
   const [localSocket, setLocalSocket] = useState(null);
