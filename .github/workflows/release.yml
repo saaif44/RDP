@@ -32,16 +32,7 @@ jobs:
     - name: Build with PyInstaller
       run: |
         cd client
-        pyinstaller -y --onefile --noconsole --name RDP_Agent \
-          --collect-all eventlet \
-          --collect-all dns \
-          --collect-all engineio \
-          --collect-all socketio \
-          --collect-all mss \
-          --collect-all pyautogui \
-          --collect-all PIL \
-          --hidden-import winreg \
-          agent.py
+        pyinstaller -y --onefile --noconsole --name RDP_Agent --collect-all eventlet --collect-all dns --collect-all engineio --collect-all socketio --collect-all mss --collect-all pyautogui --collect-all PIL --hidden-import winreg agent.py
         
     - name: Upload Client Artifact
       uses: actions/upload-artifact@v4
