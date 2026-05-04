@@ -3,9 +3,14 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const dgram = require('dgram');
+const path = require('path');
 
 const app = express();
 app.use(cors());
+
+// Serve the React dashboard from the 'public' folder (which will be populated during build)
+app.use(express.static(path.join(__dirname, 'public')));
+
 
 const server = http.createServer(app);
 const io = new Server(server, {
