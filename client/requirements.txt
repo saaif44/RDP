@@ -1,0 +1,5 @@
+python-socketio
+eventlet
+mss
+pyautogui
+Pillow
