@@ -32,7 +32,7 @@ jobs:
     - name: Build with PyInstaller
       run: |
         cd client
-        pyinstaller --onefile --noconsole --name RDP_Agent agent.py
+        pyinstaller -y --onefile --noconsole --name RDP_Agent agent.py
         
     - name: Upload Client Artifact
       uses: actions/upload-artifact@v4
