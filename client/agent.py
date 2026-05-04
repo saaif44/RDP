@@ -171,9 +171,21 @@ def add_to_startup():
         except Exception as e:
             print("Startup registration failed:", e, flush=True)
 
+def check_already_running():
+    """Exit gracefully if another instance is already using the agent port."""
+    test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    test_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        test_sock.bind(('0.0.0.0', AGENT_PORT))
+        test_sock.close()
+    except OSError:
+        print(f"LocalRDP Agent is already running on port {AGENT_PORT}. Exiting.", flush=True)
+        sys.exit(0)
+
 if __name__ == '__main__':
     pyautogui.FAILSAFE = False  # Disable failsafe for remote control
 
+    check_already_running()  # Exit silently if already running
     add_to_startup()
 
     print(f"LocalRDP Agent starting on port {AGENT_PORT}...", flush=True)
