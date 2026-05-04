@@ -69,8 +69,8 @@ jobs:
         mkdir public
         cp -r ../dashboard/dist/* public/
         
-        # Package for Windows, Mac, and Linux using Node 18 (latest supported by pkg)
-        pkg . -t node18-win-x64,node18-macos-x64,node18-linux-x64 --out-path dist
+        # Package for Windows, Mac (x64 & arm64), and Linux using Node 18
+        pkg . -t node18-win-x64,node18-macos-x64,node18-macos-arm64,node18-linux-x64 --out-path dist
         
     - name: Upload Server Artifacts
       uses: actions/upload-artifact@v4
@@ -100,11 +100,23 @@ jobs:
         cp release-artifacts/Client-windows-latest/RDP_Agent.exe final-release/LocalRDP-Client-Windows.exe || true
         cp release-artifacts/Server-Executables/server-win.exe final-release/LocalRDP-Admin-Windows.exe || true
         
-        # Mac (Zip to preserve permissions and give .zip extension)
-        cp release-artifacts/Client-macos-latest/RDP_Agent LocalRDP-Client-Mac || true
-        zip -r final-release/LocalRDP-Client-Mac.zip LocalRDP-Client-Mac || true
-        cp release-artifacts/Server-Executables/server-macos LocalRDP-Admin-Mac || true
-        zip -r final-release/LocalRDP-Admin-Mac.zip LocalRDP-Admin-Mac || true
+        # Mac Client (Create .app structure)
+        mkdir -p LocalRDP-Client.app/Contents/MacOS
+        cp release-artifacts/Client-macos-latest/RDP_Agent LocalRDP-Client.app/Contents/MacOS/LocalRDP-Client
+        chmod +x LocalRDP-Client.app/Contents/MacOS/LocalRDP-Client
+        zip -r final-release/LocalRDP-Client-Mac.zip LocalRDP-Client.app || true
+        
+        # Mac Admin - Intel (Create .app structure)
+        mkdir -p LocalRDP-Admin-Intel.app/Contents/MacOS
+        cp release-artifacts/Server-Executables/server-macos-x64 LocalRDP-Admin-Intel.app/Contents/MacOS/LocalRDP-Admin
+        chmod +x LocalRDP-Admin-Intel.app/Contents/MacOS/LocalRDP-Admin
+        zip -r final-release/LocalRDP-Admin-Mac-Intel.zip LocalRDP-Admin-Intel.app || true
+        
+        # Mac Admin - Apple Silicon (Create .app structure)
+        mkdir -p LocalRDP-Admin-AppleSilicon.app/Contents/MacOS
+        cp release-artifacts/Server-Executables/server-macos-arm64 LocalRDP-Admin-AppleSilicon.app/Contents/MacOS/LocalRDP-Admin
+        chmod +x LocalRDP-Admin-AppleSilicon.app/Contents/MacOS/LocalRDP-Admin
+        zip -r final-release/LocalRDP-Admin-Mac-AppleSilicon.zip LocalRDP-Admin-AppleSilicon.app || true
         
         # Linux (Tar.gz to preserve permissions and give standard linux extension)
         cp release-artifacts/Client-ubuntu-latest/RDP_Agent LocalRDP-Client-Linux || true
