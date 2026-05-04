@@ -95,14 +95,22 @@ jobs:
     - name: Prepare Release Files
       run: |
         mkdir -p final-release
-        # Collect client builds
-        find release-artifacts -name "RDP_Agent*" -exec cp {} final-release/ \;
-        # Collect server builds
-        find release-artifacts -name "server-*" -exec cp {} final-release/ \;
-        # Rename server files for clarity
-        mv final-release/server-win.exe final-release/MotherSystem-Win.exe || true
-        mv final-release/server-macos final-release/MotherSystem-Mac || true
-        mv final-release/server-linux final-release/MotherSystem-Linux || true
+        
+        # Windows (Just copy the .exe)
+        cp release-artifacts/Client-windows-latest/RDP_Agent.exe final-release/LocalRDP-Client-Windows.exe || true
+        cp release-artifacts/Server-Executables/server-win.exe final-release/LocalRDP-Admin-Windows.exe || true
+        
+        # Mac (Zip to preserve permissions and give .zip extension)
+        cp release-artifacts/Client-macos-latest/RDP_Agent LocalRDP-Client-Mac || true
+        zip -r final-release/LocalRDP-Client-Mac.zip LocalRDP-Client-Mac || true
+        cp release-artifacts/Server-Executables/server-macos LocalRDP-Admin-Mac || true
+        zip -r final-release/LocalRDP-Admin-Mac.zip LocalRDP-Admin-Mac || true
+        
+        # Linux (Tar.gz to preserve permissions and give standard linux extension)
+        cp release-artifacts/Client-ubuntu-latest/RDP_Agent LocalRDP-Client-Linux || true
+        tar -czvf final-release/LocalRDP-Client-Linux.tar.gz LocalRDP-Client-Linux || true
+        cp release-artifacts/Server-Executables/server-linux LocalRDP-Admin-Linux || true
+        tar -czvf final-release/LocalRDP-Admin-Linux.tar.gz LocalRDP-Admin-Linux || true
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
