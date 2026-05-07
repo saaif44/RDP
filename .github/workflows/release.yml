@@ -92,6 +92,8 @@ jobs:
       contents: write
       
     steps:
+    - uses: actions/checkout@v4
+
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
@@ -109,6 +111,11 @@ jobs:
         test -n "$WINDOWS_ADMIN"
         cp "$WINDOWS_CLIENT" final-release/LocalRDP-Client-Windows.exe
         cp "$WINDOWS_ADMIN" final-release/LocalRDP-Admin-win64.exe
+        mkdir -p "LocalRDP-Admin-Windows-Tray"
+        cp "$WINDOWS_ADMIN" "LocalRDP-Admin-Windows-Tray/LocalRDP-Admin-win64.exe"
+        cp mother_tray.ps1 "LocalRDP-Admin-Windows-Tray/mother_tray.ps1"
+        cp start_mother_hidden.vbs "LocalRDP-Admin-Windows-Tray/Start Mother System.vbs"
+        zip -r final-release/LocalRDP-Admin-Windows-Tray.zip "LocalRDP-Admin-Windows-Tray"
         set +e
         
         # --- LINUX ---

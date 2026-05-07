@@ -1,13 +1,20 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { Monitor, Laptop, Server, X, MousePointer2, FolderOpen, File, Download, Folder, ArrowLeft, LayoutGrid, Square } from 'lucide-react';
+import { Monitor, Laptop, Server, X, File, Download, Folder, ArrowLeft, LayoutGrid, Terminal, Trash2 } from 'lucide-react';
 import './index.css';
 
 const LOCAL_SERVER_URL = 'http://localhost:7420';
 
+const formatLogTime = (timestamp) => {
+  return new Intl.DateTimeFormat([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(new Date(timestamp));
+};
+
 // Sub-component for a single remote screen/agent
 const RemoteAgentView = ({ agent, onClose, isGrid }) => {
-  const [socket, setSocket] = useState(null);
   const [screenImage, setScreenImage] = useState(null);
   const [activeTab, setActiveTab] = useState('screen');
   const [currentPath, setCurrentPath] = useState('');
@@ -15,11 +22,12 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
   const [fileError, setFileError] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const screenRef = useRef(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     const agentUrl = `http://${agent.ip}:${agent.port}`;
     const newSocket = io(agentUrl);
-    setSocket(newSocket);
+    socketRef.current = newSocket;
 
     newSocket.on('screen_data', (data) => setScreenImage(data.image));
     newSocket.on('dir_data', (data) => {
@@ -41,16 +49,20 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
       document.body.removeChild(link);
     });
 
-    return () => newSocket.close();
+    return () => {
+      socketRef.current = null;
+      newSocket.close();
+    };
   }, [agent]);
 
   useEffect(() => {
-    if (activeTab === 'files' && socket && !currentPath) {
-      socket.emit('list_dir', {});
+    if (activeTab === 'files' && socketRef.current && !currentPath) {
+      socketRef.current.emit('list_dir', {});
     }
-  }, [activeTab, socket, currentPath]);
+  }, [activeTab, currentPath]);
 
   const handleMouseMove = (e) => {
+    const socket = socketRef.current;
     if (!socket || !screenRef.current) return;
     const rect = screenRef.current.getBoundingClientRect();
     const x_pct = (e.clientX - rect.left) / rect.width;
@@ -59,27 +71,33 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
   };
 
   const handleMouseClick = (e) => {
+    const socket = socketRef.current;
     if (!socket) return;
     socket.emit('mouse_click', { button: e.button });
   };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      const socket = socketRef.current;
       if (!socket || activeTab !== 'screen' || isGrid) return;
       e.preventDefault();
       socket.emit('key_press', { key: e.key });
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [socket, activeTab, isGrid]);
+  }, [activeTab, isGrid]);
 
   const handleDirClick = (folderName) => {
+    const socket = socketRef.current;
+    if (!socket) return;
     const separator = agent.os === 'Windows' ? '\\' : '/';
     const newPath = currentPath + (currentPath.endsWith(separator) ? '' : separator) + folderName;
     socket.emit('list_dir', { path: newPath });
   };
 
   const handleGoUp = () => {
+    const socket = socketRef.current;
+    if (!socket) return;
     const separator = agent.os === 'Windows' ? '\\' : '/';
     const parts = currentPath.split(separator).filter(Boolean);
     if (parts.length > 1) {
@@ -94,6 +112,8 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
   };
 
   const handleDownload = (fileName) => {
+    const socket = socketRef.current;
+    if (!socket) return;
     const separator = agent.os === 'Windows' ? '\\' : '/';
     const filePath = currentPath + (currentPath.endsWith(separator) ? '' : separator) + fileName;
     setIsDownloading(true);
@@ -139,6 +159,7 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
               <div className="current-path">{currentPath}</div>
             </div>
             {fileError && <div className="error-msg">{fileError}</div>}
+            {isDownloading && <div className="loading">Preparing download...</div>}
             <div className="file-list">
               {files.map((file, idx) => (
                 <div className="file-row" key={idx}>
@@ -147,7 +168,7 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
                     <span>{file.name}</span>
                   </div>
                   {!file.is_dir && (
-                    <button className="btn-icon" onClick={() => handleDownload(file.name)}><Download size={16} /></button>
+                    <button className="btn-icon" onClick={() => handleDownload(file.name)} disabled={isDownloading}><Download size={16} /></button>
                   )}
                 </div>
               ))}
@@ -161,14 +182,31 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
 
 function App() {
   const [agents, setAgents] = useState([]);
+  const [systemLogs, setSystemLogs] = useState([]);
   const [activeAgents, setActiveAgents] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list', 'focus', 'grid'
   const [focusedAgentId, setFocusedAgentId] = useState(null);
+  const dashboardSocketRef = useRef(null);
 
   useEffect(() => {
     const socket = io(LOCAL_SERVER_URL);
+    dashboardSocketRef.current = socket;
+
     socket.on('agents_updated', (updatedAgents) => setAgents(updatedAgents));
-    return () => socket.close();
+    socket.on('system_logs', (logs) => setSystemLogs(logs));
+    socket.on('system_log', (logEntry) => {
+      setSystemLogs((currentLogs) => {
+        if (currentLogs.some((log) => log.id === logEntry.id)) {
+          return currentLogs;
+        }
+        return [...currentLogs, logEntry].slice(-100);
+      });
+    });
+
+    return () => {
+      dashboardSocketRef.current = null;
+      socket.close();
+    };
   }, []);
 
   const connectToAgent = (agent) => {
@@ -191,6 +229,11 @@ function App() {
   const toggleGridView = () => {
     if (viewMode === 'grid') setViewMode('focus');
     else setViewMode('grid');
+  };
+
+  const clearSystemLogs = () => {
+    setSystemLogs([]);
+    dashboardSocketRef.current?.emit('clear_system_logs');
   };
 
   if (viewMode === 'focus' && focusedAgentId) {
@@ -279,6 +322,32 @@ function App() {
           ))}
         </div>
       )}
+
+      <section className="system-log-panel" aria-label="System log">
+        <div className="system-log-header">
+          <div className="system-log-title">
+            <Terminal size={18} />
+            <span>System Log</span>
+          </div>
+          <button className="btn-icon" onClick={clearSystemLogs} title="Clear system log">
+            <Trash2 size={16} />
+          </button>
+        </div>
+        <div className="system-log-list" role="log" aria-live="polite">
+          {systemLogs.length === 0 ? (
+            <div className="system-log-empty">No system events yet.</div>
+          ) : (
+            systemLogs.map((log) => (
+              <div className={`system-log-row ${log.level}`} key={log.id}>
+                <time className="system-log-time" dateTime={log.timestamp}>
+                  {formatLogTime(log.timestamp)}
+                </time>
+                <span className="system-log-message">{log.message}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
     </div>
   );
 }
