@@ -28,6 +28,7 @@ jobs:
         pip install pyinstaller eventlet dnspython flask-socketio mss pyautogui Pillow
         
     - name: Build with PyInstaller
+      shell: bash
       run: |
         cd client
         # We name them uniquely for Mac to avoid collision during download-artifact
