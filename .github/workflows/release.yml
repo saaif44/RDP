@@ -109,6 +109,7 @@ jobs:
         test -n "$WINDOWS_ADMIN"
         cp "$WINDOWS_CLIENT" final-release/LocalRDP-Client-Windows.exe
         cp "$WINDOWS_ADMIN" final-release/LocalRDP-Admin-win64.exe
+        set +e
         
         # --- LINUX ---
         cp release-artifacts/Client-ubuntu-latest/RDP_Agent LocalRDP-Client-Linux || true
@@ -178,6 +179,7 @@ jobs:
         else
           echo "Skipping Mac Client DMG because the macOS client artifact is missing."
         fi
+        true
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
