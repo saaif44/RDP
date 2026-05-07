@@ -22,4 +22,4 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Done. Start Mother System with start_mother_hidden.vbs.
+echo Done. For the professional no-terminal Windows app, build a release and use LocalRDP-Mother-System-Windows.zip.
