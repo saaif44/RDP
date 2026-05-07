@@ -103,10 +103,12 @@ jobs:
         find release-artifacts -maxdepth 2 -type f | sort
         
         # --- WINDOWS ---
-        test -f release-artifacts/Client-windows-latest/RDP_Agent.exe
-        test -f release-artifacts/Server-Executables/server-win.exe
-        cp release-artifacts/Client-windows-latest/RDP_Agent.exe final-release/LocalRDP-Client-Windows.exe
-        cp release-artifacts/Server-Executables/server-win.exe final-release/LocalRDP-Admin-win64.exe
+        WINDOWS_CLIENT="$(find release-artifacts/Client-windows-latest -type f -name '*.exe' | head -n 1)"
+        WINDOWS_ADMIN="$(find release-artifacts/Server-Executables -type f \( -name '*win*.exe' -o -name '*.exe' \) | head -n 1)"
+        test -n "$WINDOWS_CLIENT"
+        test -n "$WINDOWS_ADMIN"
+        cp "$WINDOWS_CLIENT" final-release/LocalRDP-Client-Windows.exe
+        cp "$WINDOWS_ADMIN" final-release/LocalRDP-Admin-win64.exe
         
         # --- LINUX ---
         cp release-artifacts/Client-ubuntu-latest/RDP_Agent LocalRDP-Client-Linux || true
