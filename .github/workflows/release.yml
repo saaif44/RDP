@@ -6,12 +6,15 @@ on:
       - 'v*'
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-client:
     name: Build Client Agent
     strategy:
       matrix:
-        os: [windows-latest, macos-13, macos-latest, ubuntu-latest]
+        os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     
     steps:
@@ -31,10 +34,7 @@ jobs:
       shell: bash
       run: |
         cd client
-        # We name them uniquely for Mac to avoid collision during download-artifact
-        if [ "${{ matrix.os }}" = "macos-13" ]; then
-          pyinstaller -y --onefile --noconsole --name RDP_Agent_x64 --collect-all eventlet --collect-all dns --collect-all engineio --collect-all socketio --collect-all mss --collect-all pyautogui --collect-all PIL --hidden-import winreg agent.py
-        elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+        if [ "${{ matrix.os }}" = "macos-latest" ]; then
           pyinstaller -y --onefile --noconsole --name RDP_Agent_arm64 --collect-all eventlet --collect-all dns --collect-all engineio --collect-all socketio --collect-all mss --collect-all pyautogui --collect-all PIL --hidden-import winreg agent.py
         else
           pyinstaller -y --onefile --noconsole --name RDP_Agent --collect-all eventlet --collect-all dns --collect-all engineio --collect-all socketio --collect-all mss --collect-all pyautogui --collect-all PIL --hidden-import winreg agent.py
@@ -143,8 +143,8 @@ jobs:
         EOF
         hdiutil create -volname "LocalRDP-Admin" -srcfolder "LocalRDP-Admin.app" -ov -format UDZO final-release/LocalRDP-Admin-Universal.dmg
 
-        # 2. Create Universal Client (Agent) DMG
-        lipo -create release-artifacts/Client-macos-13/RDP_Agent_x64 release-artifacts/Client-macos-latest/RDP_Agent_arm64 -output LocalRDP-Client-Bin || true
+        # 2. Create Mac Client (Agent) DMG
+        cp release-artifacts/Client-macos-latest/RDP_Agent_arm64 LocalRDP-Client-Bin
         mkdir -p "LocalRDP-Client.app/Contents/MacOS"
         cp LocalRDP-Client-Bin "LocalRDP-Client.app/Contents/MacOS/LocalRDP-Client"
         chmod +x "LocalRDP-Client.app/Contents/MacOS/LocalRDP-Client"
@@ -168,7 +168,7 @@ jobs:
         </dict>
         </plist>
         EOF
-        hdiutil create -volname "LocalRDP-Client" -srcfolder "LocalRDP-Client.app" -ov -format UDZO final-release/LocalRDP-Client-Universal.dmg
+        hdiutil create -volname "LocalRDP-Client" -srcfolder "LocalRDP-Client.app" -ov -format UDZO final-release/LocalRDP-Client-Mac-arm64.dmg
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
