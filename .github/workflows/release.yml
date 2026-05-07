@@ -99,10 +99,13 @@ jobs:
     - name: Prepare Release Files
       run: |
         mkdir -p final-release
+        find release-artifacts -maxdepth 2 -type f | sort
         
         # --- WINDOWS ---
-        cp release-artifacts/Client-windows-latest/RDP_Agent.exe final-release/LocalRDP-Client-Windows.exe || true
-        cp release-artifacts/Server-Executables/server-win.exe final-release/LocalRDP-Admin-Windows.exe || true
+        test -f release-artifacts/Client-windows-latest/RDP_Agent.exe
+        test -f release-artifacts/Server-Executables/server-win.exe
+        cp release-artifacts/Client-windows-latest/RDP_Agent.exe final-release/LocalRDP-Client-Windows.exe
+        cp release-artifacts/Server-Executables/server-win.exe final-release/LocalRDP-Admin-win64.exe
         
         # --- LINUX ---
         cp release-artifacts/Client-ubuntu-latest/RDP_Agent LocalRDP-Client-Linux || true
