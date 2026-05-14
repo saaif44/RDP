@@ -139,10 +139,18 @@ jobs:
         test -n "$WINDOWS_CLIENT"
         test -n "$WINDOWS_ADMIN"
         test -n "$WINDOWS_TRAY"
+        # Client: ship a zip bundling the installer so it lands in Program Files
+        mkdir -p "LocalRDP-Client-Windows"
+        cp "$WINDOWS_CLIENT" "LocalRDP-Client-Windows/LocalRDP-Client-Windows.exe"
+        cp client/install_windows.bat "LocalRDP-Client-Windows/Install.bat"
+        zip -r final-release/LocalRDP-Client-Windows.zip "LocalRDP-Client-Windows"
         cp "$WINDOWS_CLIENT" final-release/LocalRDP-Client-Windows.exe
+
+        # Mother System: ship a zip bundling the installer
         mkdir -p "LocalRDP-Mother-System-Windows/runtime"
         cp "$WINDOWS_TRAY" "LocalRDP-Mother-System-Windows/LocalRDP-Mother-System.exe"
         cp "$WINDOWS_ADMIN" "LocalRDP-Mother-System-Windows/runtime/LocalRDP-Admin-Backend.exe"
+        cp launcher/windows/install_mother_system_windows.bat "LocalRDP-Mother-System-Windows/Install.bat"
         zip -r final-release/LocalRDP-Mother-System-Windows.zip "LocalRDP-Mother-System-Windows"
         set +e
         
