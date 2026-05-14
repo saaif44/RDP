@@ -105,19 +105,46 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
     return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, []);
 
+  // Map a pointer event to image-relative percentages, accounting for the
+  // letterbox bars that object-fit: contain leaves around the feed.
+  const getImagePercent = (e) => {
+    const img = screenRef.current;
+    if (!img || !img.naturalWidth || !img.naturalHeight) return null;
+    const rect = img.getBoundingClientRect();
+    const imageRatio = img.naturalWidth / img.naturalHeight;
+    const boxRatio = rect.width / rect.height;
+    let renderW = rect.width;
+    let renderH = rect.height;
+    if (imageRatio > boxRatio) {
+      renderH = rect.width / imageRatio;
+    } else {
+      renderW = rect.height * imageRatio;
+    }
+    const offsetX = (rect.width - renderW) / 2;
+    const offsetY = (rect.height - renderH) / 2;
+    const x = e.clientX - rect.left - offsetX;
+    const y = e.clientY - rect.top - offsetY;
+    if (x < 0 || y < 0 || x > renderW || y > renderH) return null;
+    return { x_pct: x / renderW, y_pct: y / renderH };
+  };
+
   const handleMouseMove = (e) => {
     const socket = socketRef.current;
-    if (!socket || !screenRef.current || !controlEnabled) return;
-    const rect = screenRef.current.getBoundingClientRect();
-    const x_pct = (e.clientX - rect.left) / rect.width;
-    const y_pct = (e.clientY - rect.top) / rect.height;
-    socket.emit('mouse_move', { x_pct, y_pct });
+    if (!socket || !controlEnabled) return;
+    const pos = getImagePercent(e);
+    if (pos) socket.emit('mouse_move', pos);
   };
 
   const handleMouseClick = (e) => {
     const socket = socketRef.current;
     if (!socket || !controlEnabled) return;
     socket.emit('mouse_click', { button: e.button });
+  };
+
+  const handleWheel = (e) => {
+    const socket = socketRef.current;
+    if (!socket || !controlEnabled) return;
+    socket.emit('mouse_scroll', { dy: e.deltaY });
   };
 
   useEffect(() => {
@@ -226,6 +253,7 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
               className="screen-feed"
               onMouseMove={!isGrid ? handleMouseMove : null}
               onMouseDown={!isGrid ? handleMouseClick : null}
+              onWheel={!isGrid ? handleWheel : null}
               onContextMenu={(e) => e.preventDefault()}
               draggable={false}
               style={{ cursor: !isGrid && controlEnabled ? 'crosshair' : 'default' }}

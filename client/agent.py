@@ -114,6 +114,20 @@ def on_mouse_click(sid, data):
     elif button == 1:
         pyautogui.click(button='middle')
 
+@sio.on('mouse_scroll')
+def on_mouse_scroll(sid, data):
+    if not control_enabled:
+        return
+    dy = data.get('dy', 0)
+    if not dy:
+        return
+    # Browser deltaY is positive when scrolling down; pyautogui.scroll is
+    # positive for up. Convert, keeping at least one click per event.
+    steps = int(round(dy / 100.0))
+    if steps == 0:
+        steps = 1 if dy > 0 else -1
+    pyautogui.scroll(-steps)
+
 @sio.on('key_press')
 def on_key_press(sid, data):
     if not control_enabled:
