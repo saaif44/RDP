@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Threading;
 using System.Windows.Forms;
-using Microsoft.Win32;
 
 namespace LocalRDP.Admin.Tray;
 
@@ -40,8 +39,6 @@ internal sealed class MotherSystemTrayContext : ApplicationContext
 {
     private const string AppName = "Mother System";
     private const string DashboardUrl = "http://localhost:7420";
-    private const string StartupKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string StartupValueName = "LocalRDP_MotherSystem";
 
     private readonly NotifyIcon _trayIcon;
     private readonly ContextMenuStrip _menu;
@@ -74,33 +71,7 @@ internal sealed class MotherSystemTrayContext : ApplicationContext
         };
         _trayIcon.DoubleClick += (_, _) => OpenDashboard();
 
-        EnsureStartupRegistration();
         StartBackend();
-    }
-
-    private void EnsureStartupRegistration()
-    {
-        try
-        {
-            var exePath = Environment.ProcessPath ?? Application.ExecutablePath;
-            var desiredValue = $"\"{exePath}\"";
-
-            using var key = Registry.CurrentUser.OpenSubKey(StartupKeyPath, writable: true);
-            if (key is null)
-            {
-                return;
-            }
-
-            if (key.GetValue(StartupValueName) as string != desiredValue)
-            {
-                key.SetValue(StartupValueName, desiredValue);
-                WriteLog($"Registered for Windows startup: {desiredValue}");
-            }
-        }
-        catch (Exception ex)
-        {
-            WriteLog($"Startup registration failed: {ex.Message}");
-        }
     }
 
     private void StartBackend()
