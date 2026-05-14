@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v1.3.0)'
+        required: true
+        default: 'v1.3.0'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -224,12 +229,42 @@ jobs:
         fi
         true
 
+    - name: Resolve release version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION="${{ github.ref_name }}"
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "Release version: $VERSION"
+
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
         files: final-release/*
-        tag_name: ${{ github.ref_name }}
-        name: Release ${{ github.ref_name }}
+        tag_name: ${{ steps.version.outputs.version }}
+        name: LocalRDP ${{ steps.version.outputs.version }}
+        body: |
+          ## LocalRDP ${{ steps.version.outputs.version }}
+
+          ### Windows
+          - **LocalRDP-Client-Windows.zip** — monitored-PC agent. Run `Install.bat` to install into Program Files and register the logon startup task.
+          - **LocalRDP-Mother-System-Windows.zip** — counselor dashboard + backend. Run `Install.bat` to install and auto-start at logon.
+          - `LocalRDP-Client-Windows.exe` — raw agent executable (no installer).
+
+          ### macOS
+          - **LocalRDP-Admin-Universal.dmg** — Mother System (Intel + Apple Silicon).
+          - **LocalRDP-Client-Mac-arm64.dmg** — agent (Apple Silicon).
+
+          ### Linux
+          - **LocalRDP-Client-Linux.tar.gz** / **LocalRDP-Admin-Linux.tar.gz**
+
+          ### Changes
+          - Windows installers place the apps in Program Files and register a logon-triggered Scheduled Task so they start automatically for any user.
+          - Streaming quality is selectable from the dashboard: Clear (default), Balanced, Low Latency.
+          - Remote control is **off by default** — the dashboard is view-only until the operator enables the Control toggle.
         draft: false
         prerelease: false
       env:

@@ -1,9 +1,18 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { Monitor, Laptop, Server, X, File, Download, Folder, ArrowLeft, LayoutGrid, Terminal, Trash2 } from 'lucide-react';
+import { Monitor, Laptop, Server, X, File, Download, Folder, ArrowLeft, LayoutGrid, Terminal, Trash2, Eye, MousePointerClick, Gauge, LogOut, Maximize, Minimize } from 'lucide-react';
 import './index.css';
 
 const LOCAL_SERVER_URL = 'http://localhost:7420';
+const TOKEN_KEY = 'localrdp_token';
+const apiUrl = (p) => `${LOCAL_SERVER_URL}${p}`;
+
+// Streaming presets. Clarity is the default; low latency is opt-in.
+const QUALITY_MODES = [
+  { id: 'clear', label: 'Clear', hint: 'Sharpest picture' },
+  { id: 'balanced', label: 'Balanced', hint: 'Good picture, lower lag' },
+  { id: 'low_latency', label: 'Low Latency', hint: 'Fastest response, softer picture' },
+];
 
 const formatLogTime = (timestamp) => {
   return new Intl.DateTimeFormat([], {
@@ -21,7 +30,11 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
   const [files, setFiles] = useState([]);
   const [fileError, setFileError] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [controlEnabled, setControlEnabled] = useState(false);
+  const [qualityMode, setQualityMode] = useState('clear');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const screenRef = useRef(null);
+  const viewRef = useRef(null);
   const socketRef = useRef(null);
 
   useEffect(() => {
@@ -30,6 +43,10 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
     socketRef.current = newSocket;
 
     newSocket.on('screen_data', (data) => setScreenImage(data.image));
+    newSocket.on('agent_state', (state) => {
+      if (state.quality_mode) setQualityMode(state.quality_mode);
+      if (typeof state.control_enabled === 'boolean') setControlEnabled(state.control_enabled);
+    });
     newSocket.on('dir_data', (data) => {
       setCurrentPath(data.path);
       setFiles(data.files);
@@ -61,9 +78,36 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
     }
   }, [activeTab, currentPath]);
 
+  const changeQuality = (mode) => {
+    setQualityMode(mode);
+    socketRef.current?.emit('set_quality', { mode });
+  };
+
+  const toggleControl = () => {
+    const next = !controlEnabled;
+    setControlEnabled(next);
+    socketRef.current?.emit('set_control', { enabled: next });
+  };
+
+  const toggleFullscreen = () => {
+    const el = viewRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else {
+      el.requestFullscreen?.().catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
+
   const handleMouseMove = (e) => {
     const socket = socketRef.current;
-    if (!socket || !screenRef.current) return;
+    if (!socket || !screenRef.current || !controlEnabled) return;
     const rect = screenRef.current.getBoundingClientRect();
     const x_pct = (e.clientX - rect.left) / rect.width;
     const y_pct = (e.clientY - rect.top) / rect.height;
@@ -72,20 +116,20 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
 
   const handleMouseClick = (e) => {
     const socket = socketRef.current;
-    if (!socket) return;
+    if (!socket || !controlEnabled) return;
     socket.emit('mouse_click', { button: e.button });
   };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       const socket = socketRef.current;
-      if (!socket || activeTab !== 'screen' || isGrid) return;
+      if (!socket || activeTab !== 'screen' || isGrid || !controlEnabled) return;
       e.preventDefault();
       socket.emit('key_press', { key: e.key });
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, isGrid]);
+  }, [activeTab, isGrid, controlEnabled]);
 
   const handleDirClick = (folderName) => {
     const socket = socketRef.current;
@@ -121,18 +165,53 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
   };
 
   return (
-    <div className={`remote-view ${isGrid ? 'grid-item' : ''}`}>
+    <div ref={viewRef} className={`remote-view ${isGrid ? 'grid-item' : ''}`}>
       <div className="remote-header">
         <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <Monitor size={isGrid ? 16 : 20} />
           <span style={{ fontWeight: '600', fontSize: isGrid ? '14px' : '16px' }}>{agent.name}</span>
           {!isGrid && (
             <div className="tabs">
-              <button className={`tab-btn ${activeTab === 'screen' ? 'active' : ''}`} onClick={() => setActiveTab('screen')}>Screen Control</button>
+              <button className={`tab-btn ${activeTab === 'screen' ? 'active' : ''}`} onClick={() => setActiveTab('screen')}>Screen</button>
               <button className={`tab-btn ${activeTab === 'files' ? 'active' : ''}`} onClick={() => setActiveTab('files')}>File Manager</button>
             </div>
           )}
         </div>
+
+        {!isGrid && activeTab === 'screen' && (
+          <div className="remote-controls">
+            <div className="quality-group" title="Streaming quality — clarity is prioritized by default">
+              <Gauge size={15} />
+              {QUALITY_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  className={`quality-btn ${qualityMode === m.id ? 'active' : ''}`}
+                  onClick={() => changeQuality(m.id)}
+                  title={m.hint}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <button
+              className={`btn-control ${controlEnabled ? 'on' : ''}`}
+              onClick={toggleControl}
+              title={controlEnabled ? 'Stop controlling — switch back to view only' : 'Take silent control of this PC'}
+            >
+              {controlEnabled ? <MousePointerClick size={16} /> : <Eye size={16} />}
+              {controlEnabled ? 'Controlling' : 'View Only'}
+            </button>
+            <button
+              className="btn-control"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? 'Exit full screen' : 'Full screen'}
+            >
+              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+              {isFullscreen ? 'Exit' : 'Full Screen'}
+            </button>
+          </div>
+        )}
+
         <button className="btn btn-close" onClick={() => onClose(agent.id)}>
           <X size={18} /> {isGrid ? '' : 'Disconnect'}
         </button>
@@ -149,7 +228,7 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
               onMouseDown={!isGrid ? handleMouseClick : null}
               onContextMenu={(e) => e.preventDefault()}
               draggable={false}
-              style={{ cursor: isGrid ? 'default' : 'crosshair' }}
+              style={{ cursor: !isGrid && controlEnabled ? 'crosshair' : 'default' }}
             />
           ) : <div className="loading">Connecting...</div>
         ) : (
@@ -180,18 +259,175 @@ const RemoteAgentView = ({ agent, onClose, isGrid }) => {
   );
 };
 
+// Login / first-run setup wall. The dashboard renders nothing else until a
+// valid token is held.
+const AuthScreen = ({ mode, onAuthed }) => {
+  const isSetup = mode === 'setup';
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    if (isSetup && password !== confirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(apiUrl(isSetup ? '/api/auth/setup' : '/api/auth/login'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Something went wrong.');
+        return;
+      }
+      onAuthed(data.token, data.username);
+    } catch {
+      setError('Could not reach the server.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="auth-screen">
+      <form className="auth-card" onSubmit={submit}>
+        <div className="auth-brand">
+          <Server color="var(--accent)" size={26} />
+          <h1>Mother System</h1>
+        </div>
+        <h2>{isSetup ? 'Create admin account' : 'Sign in'}</h2>
+        <p className="auth-sub">
+          {isSetup
+            ? 'First-time setup. This account controls access to the server.'
+            : 'Enter your administrator credentials to continue.'}
+        </p>
+        <label className="auth-label">
+          Username
+          <input
+            className="auth-input"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+            autoFocus
+          />
+        </label>
+        <label className="auth-label">
+          Password
+          <input
+            className="auth-input"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete={isSetup ? 'new-password' : 'current-password'}
+          />
+        </label>
+        {isSetup && (
+          <label className="auth-label">
+            Confirm password
+            <input
+              className="auth-input"
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+            />
+          </label>
+        )}
+        {error && <div className="auth-error">{error}</div>}
+        <button className="btn" type="submit" disabled={busy}>
+          {busy ? 'Please wait…' : isSetup ? 'Create account' : 'Sign in'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
 function App() {
   const [agents, setAgents] = useState([]);
   const [systemLogs, setSystemLogs] = useState([]);
   const [activeAgents, setActiveAgents] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list', 'focus', 'grid'
   const [focusedAgentId, setFocusedAgentId] = useState(null);
+  const [authStatus, setAuthStatus] = useState('loading'); // loading | setup | login | authed
+  const [authToken, setAuthToken] = useState(null);
+  const [authUser, setAuthUser] = useState(null);
   const dashboardSocketRef = useRef(null);
 
+  // Decide on load whether to show setup, login, or the app.
   useEffect(() => {
-    const socket = io(LOCAL_SERVER_URL);
+    let cancelled = false;
+    (async () => {
+      try {
+        const statusRes = await fetch(apiUrl('/api/auth/status'));
+        const status = await statusRes.json();
+        if (cancelled) return;
+        if (!status.configured) {
+          setAuthStatus('setup');
+          return;
+        }
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+          setAuthStatus('login');
+          return;
+        }
+        const meRes = await fetch(apiUrl('/api/auth/me'), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (cancelled) return;
+        if (meRes.ok) {
+          const me = await meRes.json();
+          setAuthToken(token);
+          setAuthUser(me.username);
+          setAuthStatus('authed');
+        } else {
+          localStorage.removeItem(TOKEN_KEY);
+          setAuthStatus('login');
+        }
+      } catch {
+        if (!cancelled) setAuthStatus('login');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleAuthed = (token, username) => {
+    localStorage.setItem(TOKEN_KEY, token);
+    setAuthToken(token);
+    setAuthUser(username);
+    setAuthStatus('authed');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(TOKEN_KEY);
+    setAuthToken(null);
+    setAuthUser(null);
+    setActiveAgents([]);
+    setFocusedAgentId(null);
+    setViewMode('list');
+    setAuthStatus('login');
+  };
+
+  useEffect(() => {
+    if (authStatus !== 'authed' || !authToken) return undefined;
+    const socket = io(LOCAL_SERVER_URL, { auth: { token: authToken } });
     dashboardSocketRef.current = socket;
 
+    socket.on('connect_error', (err) => {
+      if (err && err.message === 'unauthorized') {
+        localStorage.removeItem(TOKEN_KEY);
+        setAuthToken(null);
+        setAuthUser(null);
+        setAuthStatus('login');
+      }
+    });
     socket.on('agents_updated', (updatedAgents) => setAgents(updatedAgents));
     socket.on('system_logs', (logs) => setSystemLogs(logs));
     socket.on('system_log', (logEntry) => {
@@ -207,7 +443,7 @@ function App() {
       dashboardSocketRef.current = null;
       socket.close();
     };
-  }, []);
+  }, [authStatus, authToken]);
 
   const connectToAgent = (agent) => {
     if (!activeAgents.find(a => a.id === agent.id)) {
@@ -236,6 +472,13 @@ function App() {
     dashboardSocketRef.current?.emit('clear_system_logs');
   };
 
+  if (authStatus === 'loading') {
+    return <div className="auth-screen"><div className="loading">Loading…</div></div>;
+  }
+  if (authStatus === 'setup' || authStatus === 'login') {
+    return <AuthScreen mode={authStatus} onAuthed={handleAuthed} />;
+  }
+
   if (viewMode === 'focus' && focusedAgentId) {
     const agent = activeAgents.find(a => a.id === focusedAgentId);
     return (
@@ -243,9 +486,14 @@ function App() {
         <div className="sidebar">
           <div className="sidebar-header">
             <h3>Connected</h3>
-            <button className="btn-icon" onClick={toggleGridView} title="Toggle Grid View">
-              <LayoutGrid size={20} />
-            </button>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button className="btn-icon" onClick={toggleGridView} title="Toggle Grid View">
+                <LayoutGrid size={20} />
+              </button>
+              <button className="btn-icon" onClick={handleLogout} title={`Sign out${authUser ? ` (${authUser})` : ''}`}>
+                <LogOut size={20} />
+              </button>
+            </div>
           </div>
           <div className="active-list">
             {activeAgents.map(a => (
@@ -275,6 +523,7 @@ function App() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button className="btn btn-outline" onClick={() => setViewMode('focus')}>Exit Grid</button>
             <button className="btn" onClick={() => setViewMode('list')}>+ Add PC</button>
+            <button className="btn btn-logout" onClick={handleLogout}><LogOut size={16} /> Sign out</button>
           </div>
         </div>
         <div className="multi-grid">
@@ -290,11 +539,16 @@ function App() {
     <div className="container">
       <div className="header">
         <h1><Server color="var(--accent)" /> Mother System</h1>
-        {activeAgents.length > 0 && (
-          <button className="btn btn-outline" onClick={() => setViewMode('focus')}>
-            Back to Active ({activeAgents.length})
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {activeAgents.length > 0 && (
+            <button className="btn btn-outline" onClick={() => setViewMode('focus')}>
+              Back to Active ({activeAgents.length})
+            </button>
+          )}
+          <button className="btn btn-logout" onClick={handleLogout} title={authUser ? `Signed in as ${authUser}` : 'Sign out'}>
+            <LogOut size={16} /> Sign out
           </button>
-        )}
+        </div>
       </div>
 
       {agents.length === 0 ? (

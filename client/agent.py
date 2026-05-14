@@ -44,11 +44,30 @@ BROADCAST_PORT = 7421
 
 active_connections = 0
 
+# ── Streaming + control state (admin-configurable at runtime) ──
+# Clarity is the default priority. "low_latency" trades sharpness for speed.
+QUALITY_PRESETS = {
+    'clear':       {'quality': 85, 'max_dim': 1920, 'interval': 0.10},
+    'balanced':    {'quality': 65, 'max_dim': 1366, 'interval': 0.07},
+    'low_latency': {'quality': 40, 'max_dim': 1024, 'interval': 0.04},
+}
+DEFAULT_QUALITY_MODE = 'clear'
+
+quality_mode = DEFAULT_QUALITY_MODE
+stream_settings = dict(QUALITY_PRESETS[DEFAULT_QUALITY_MODE])
+# View-only by default; the admin must explicitly turn control on.
+control_enabled = False
+
+
+def _state_payload():
+    return {'quality_mode': quality_mode, 'control_enabled': control_enabled}
+
 @sio.event
 def connect(sid, environ):
     global active_connections
     active_connections += 1
     print(f"Admin connected: {sid}", flush=True)
+    sio.emit('agent_state', _state_payload(), to=sid)
 
 @sio.event
 def disconnect(sid):
@@ -56,8 +75,27 @@ def disconnect(sid):
     active_connections -= 1
     print(f"Admin disconnected: {sid}", flush=True)
 
+@sio.on('set_quality')
+def on_set_quality(sid, data):
+    global quality_mode, stream_settings
+    mode = (data or {}).get('mode')
+    if mode in QUALITY_PRESETS:
+        quality_mode = mode
+        stream_settings = dict(QUALITY_PRESETS[mode])
+        print(f"Stream quality set to '{mode}' by {sid}", flush=True)
+        sio.emit('agent_state', _state_payload())
+
+@sio.on('set_control')
+def on_set_control(sid, data):
+    global control_enabled
+    control_enabled = bool((data or {}).get('enabled'))
+    print(f"Remote control {'ENABLED' if control_enabled else 'disabled'} by {sid}", flush=True)
+    sio.emit('agent_state', _state_payload())
+
 @sio.on('mouse_move')
 def on_mouse_move(sid, data):
+    if not control_enabled:
+        return
     screen_width, screen_height = pyautogui.size()
     if 'x_pct' in data and 'y_pct' in data:
         target_x = int(data['x_pct'] * screen_width)
@@ -66,6 +104,8 @@ def on_mouse_move(sid, data):
 
 @sio.on('mouse_click')
 def on_mouse_click(sid, data):
+    if not control_enabled:
+        return
     button = data.get('button', 'left')
     if button == 0:
         pyautogui.click(button='left')
@@ -76,6 +116,8 @@ def on_mouse_click(sid, data):
 
 @sio.on('key_press')
 def on_key_press(sid, data):
+    if not control_enabled:
+        return
     key = data.get('key')
     if key:
         try:
@@ -129,17 +171,21 @@ def capture_screen():
         monitor = sct.monitors[1]
         while True:
             if active_connections > 0:
+                settings = stream_settings
                 try:
                     sct_img = sct.grab(monitor)
                     img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
-                    img.thumbnail((1280, 720))
+                    max_dim = settings['max_dim']
+                    img.thumbnail((max_dim, max_dim))
                     buffer = io.BytesIO()
-                    img.save(buffer, format="JPEG", quality=40)
+                    img.save(buffer, format="JPEG", quality=settings['quality'])
                     encoded_string = base64.b64encode(buffer.getvalue()).decode('utf-8')
                     sio.emit('screen_data', {'image': f"data:image/jpeg;base64,{encoded_string}"})
                 except Exception as e:
                     print("Screen capture error:", e, flush=True)
-            eventlet.sleep(0.1)
+                eventlet.sleep(settings['interval'])
+            else:
+                eventlet.sleep(0.5)
 
 def broadcast_presence():
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)

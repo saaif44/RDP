@@ -183,6 +183,169 @@ body {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
+/* Auth screen (login / first-run setup) */
+.auth-screen {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-brand h1 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.auth-card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.auth-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.auth-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.auth-input {
+  background: var(--sidebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.auth-input:focus {
+  border-color: var(--accent);
+}
+
+.auth-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  width: auto;
+  padding: 8px 14px;
+}
+
+.btn-logout:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+/* Full-screen remote view */
+.remote-view:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+}
+
+/* Make the feed grow to fill the screen (max-width alone only caps it) */
+.remote-view:fullscreen .screen-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Streaming quality + control toggle */
+.remote-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quality-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,0,0,0.25);
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+}
+
+.quality-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.quality-btn:hover { color: var(--text); }
+
+.quality-btn.active {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.btn-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-control:hover {
+  color: var(--text);
+  border-color: var(--text-secondary);
+}
+
+.btn-control.on {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--error);
+  color: var(--error);
+}
+
 .screen-container {
   flex: 1;
   background: #000;
